@@ -6,7 +6,6 @@ add_compile_options(-std=c++17)
 
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
-  image_transport
   roscpp
   sensor_msgs
   std_msgs
@@ -21,7 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES depth_image_averaging_nodelet
-  CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs tf2_ros nodelet
+  CATKIN_DEPENDS cv_bridge roscpp sensor_msgs std_msgs tf2_ros nodelet
 )
 
 ###########
