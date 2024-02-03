@@ -12,4 +12,44 @@
       <remap from="depth_out" to="/camera/aligned_depth_to_color/image_raw_avg"/>
   </node>
 
+  <node pkg="nodelet" type="nodelet" name="cloudify_full" output="screen" args="standalone depth_image_proc/point_cloud_xyzrgb">
+    <param name="queue_size" value="1000"/>
+    <param name="exact_sync" value="true"/>
+    <remap from="depth_registered/image_rect" to="/camera/aligned_depth_to_color/image_raw_avg"/>
+    <remap from="depth_registered/points" to="/camera/depth/points_avg"/>
+    <remap from="rgb/image_rect_color" to="/camera/color/image_raw"/>
+    <remap from="rgb/camera_info" to="/camera/color/camera_info"/>
+  </node>
+
+<!--
+  <node pkg="nodelet" type="nodelet" name="statistical_filter_full" output="screen" args="standalone pcl/StatisticalOutlierRemoval">
+    <remap from="~input" to="/camera/depth/points"/>
+    <remap from="~output" to="/camera/depth/points_filtered"/>
+    <param name="mean_k" value="7"/>
+    <param name="stddev" value="0.01"/>
+    <param name="negative" value="false"/>
+  </node>
+  -->
+
+  <node pkg="voxblox_ros" type="tsdf_server" name="voxblox_node" output="screen" args="-alsologtostderr" clear_params="true">
+    <remap from="pointcloud" to="/camera/depth/points_avg"/>
+    <param name="tsdf_voxel_size" value="0.001" />
+    <param name="tsdf_voxels_per_side" value="64" />
+    <param name="voxel_carving_enabled" value="true" />
+    <param name="color_mode" value="color" />
+    <param name="use_tf_transforms" value="true" />
+    <param name="update_mesh_every_n_sec" value="5.0" />
+    <param name="min_time_between_msgs_sec" value="0.0" />
+    <param name="method" value="simple" />
+    <param name="use_const_weight" value="false" />
+    <param name="allow_clear" value="true" />
+    <param name="verbose" value="false" />
+    <!--<param name="max_ray_length_m" value="1.0"/>-->
+    <param name="enable_icp" value="false"/>
+    <param name="icp_mini_batch_size" value="1000"/>
+    <param name="accumulate_icp_corrections" value="false"/>
+    <param name="publish_tsdf_info" value="true"/>
+    <!-- <param name="start_voxel_subsampling_factor" value="8"/> -->
+  </node>
+
 </launch>

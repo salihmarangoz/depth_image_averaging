@@ -32,7 +32,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(depth_image_averaging_nodelet src/depth_image_averaging_nodelet.cpp)
+add_library(depth_image_averaging_nodelet src/depth_image_averaging_nodelet.cpp src/depth_image_averager.cpp)
 target_link_libraries(depth_image_averaging_nodelet ${catkin_LIBRARIES})
 
 add_executable(depth_image_averaging_node src/depth_image_averaging_node.cpp)

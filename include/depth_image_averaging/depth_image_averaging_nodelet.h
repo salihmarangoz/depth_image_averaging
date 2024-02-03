@@ -3,6 +3,7 @@
 
 #include "nodelet/nodelet.h"
 #include "ros/ros.h"
+#include <depth_image_averaging/depth_image_averager.h>
 
 #include <tf2_ros/transform_listener.h>
 #include <sensor_msgs/Image.h>
@@ -23,22 +24,18 @@ public:
 private:
   virtual void onInit();
   void depthImageCallback(const sensor_msgs::ImageConstPtr &image);
-  void resetAcc();
-  template<typename T> void updateAcc(const sensor_msgs::ImageConstPtr& image);
-  template<typename T> void publishAcc();
+  void publishAcc();
   bool checkMovement(const geometry_msgs::TransformStamped& transform_a, const geometry_msgs::TransformStamped& transform_b);
 
   ros::NodeHandle nh_, private_nh_;
   ros::Subscriber depth_image_sub_;
   ros::Publisher acc_pub_;
+  std::shared_ptr<DepthImageAverager> depth_image_averager_;
   std::deque<sensor_msgs::ImageConstPtr> image_buffer_;
-  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
-  std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   geometry_msgs::TransformStamped last_stable_transform_;
   sensor_msgs::ImageConstPtr last_stable_image_;
-  int num_accumulated_images_;
-  std::vector<float> acc_;
-  std_msgs::Header acc_header_;
 
   // Parameters
   std::string reference_frame_;
