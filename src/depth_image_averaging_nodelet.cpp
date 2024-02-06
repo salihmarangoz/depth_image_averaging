@@ -153,8 +153,8 @@ void DepthImageAveragingNodelet::publishAcc()
       exit(-1);
   }
   auto stop = std::chrono::high_resolution_clock::now();
-
-  NODELET_INFO("Depth image averaging took %ld microseconds.", std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count());
+  std::chrono::duration<float> timediff = stop - start;
+  NODELET_INFO("Depth image averaging took %f seconds.", timediff.count());
 
   acc_pub_.publish(acc_image);
 }
