@@ -35,7 +35,7 @@ void DepthImageAveragingNodelet::onInit()
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>();
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-  acc_pub_ = nh_.advertise<sensor_msgs::Image>("depth_out", 20);
+  depth_image_pub_ = nh_.advertise<sensor_msgs::Image>("depth_out", 20);
   depth_image_sub_ = nh_.subscribe("depth_in", 150, &DepthImageAveragingNodelet::depthImageCallback, this);
 };
 
@@ -157,7 +157,7 @@ void DepthImageAveragingNodelet::publishAcc()
   std::chrono::duration<float> timediff = stop - start;
   NODELET_INFO("Depth image averaging took %f seconds.", timediff.count());
 
-  acc_pub_.publish(acc_image);
+  depth_image_pub_.publish(acc_image);
 }
 
 }  // namespace depth_image_averaging

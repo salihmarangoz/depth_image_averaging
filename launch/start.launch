@@ -12,6 +12,8 @@
       <remap from="depth_out" to="/camera/aligned_depth_to_color/image_raw_avg"/>
   </node>
 
+  <!-- VOXBLOX
+
   <node pkg="nodelet" type="nodelet" name="cloudify_full" output="screen" args="standalone depth_image_proc/point_cloud_xyzrgb">
     <param name="queue_size" value="1000"/>
     <param name="exact_sync" value="true"/>
@@ -34,12 +36,12 @@
     <param name="use_const_weight" value="false" />
     <param name="allow_clear" value="true" />
     <param name="verbose" value="false" />
-    <!--<param name="max_ray_length_m" value="1.0"/>-->
-    <param name="enable_icp" value="true"/>
+    <param name="enable_icp" value="false"/>
     <param name="icp_mini_batch_size" value="1000"/>
     <param name="accumulate_icp_corrections" value="true"/>
     <param name="publish_tsdf_info" value="true"/>
-    <!-- <param name="start_voxel_subsampling_factor" value="8"/> -->
   </node>
+
+  -->
 
 </launch>

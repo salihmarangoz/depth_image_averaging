@@ -26,7 +26,7 @@ private:
 
   ros::NodeHandle nh_, private_nh_;
   ros::Subscriber depth_image_sub_;
-  ros::Publisher acc_pub_;
+  ros::Publisher depth_image_pub_;
   std::shared_ptr<DepthImageAverager> depth_image_averager_;
   std::deque<sensor_msgs::ImageConstPtr> image_buffer_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
