@@ -3,8 +3,6 @@
 #include <depth_image_proc/depth_traits.h>
 #include <boost/make_shared.hpp>
 
-// TODO: count inf and nan separately
-
 namespace depth_image_averaging
 {
 
@@ -25,7 +23,6 @@ DepthImageAverager::DepthImageAverager(int width, int height, int min_elements, 
 
 void DepthImageAverager::vector2DepthImage_(sensor_msgs::ImagePtr &image, const std::vector<float> arr)
 {
-  //image = boost::make_shared<sensor_msgs::Image>();
   image->encoding = last_image_->encoding;
   image->header = last_image_->header;
   image->height = last_image_->height;
@@ -41,14 +38,6 @@ void DepthImageAverager::vector2DepthImage_(sensor_msgs::ImagePtr &image, const 
   {
     vector2DepthData<uint16_t>(image, arr);
   }
-  /*
-  else
-  {
-    return nullptr;
-  }
-
-  return image;
-  */
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -218,7 +207,7 @@ bool DepthImageAverager::computeMedian(sensor_msgs::ImagePtr &averaged_image, bo
 
 //////////////////////////////////////////////////////////////////////////
 
-bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image, float mad_upper_limit_a, float mad_upper_limit_b, float mad_scale)
+bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image, float mad_upper_limit_a, float mad_upper_limit_b, float mad_scale, bool true_median)
 {
   if (size_ <= 0) return false;
 
@@ -265,7 +254,20 @@ bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image, float
     // find median
     auto m = tmp_buffer.begin() + filtered_size / 2;
     std::nth_element(tmp_buffer.begin(), m, tmp_buffer.begin() + filtered_size);
-    float median_value = tmp_buffer[filtered_size / 2];
+    float median_value;
+    if (true_median && filtered_size % 2 == 0)
+    {
+      // true median
+      std::nth_element(tmp_buffer.begin(), m-1, tmp_buffer.begin() + filtered_size);
+      float val_a = tmp_buffer[filtered_size / 2 - 1];
+      float val_b = tmp_buffer[filtered_size / 2];
+      median_value = (val_a + val_b) / 2.0;
+    }
+    else
+    {
+      // fast median, but biased if the array length is even
+      median_value = tmp_buffer[filtered_size / 2];
+    }
 
     // compute mad
     float mad = 0;

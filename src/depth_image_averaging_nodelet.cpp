@@ -2,6 +2,7 @@
 #include "pluginlib/class_list_macros.h"
 #include <sensor_msgs/image_encodings.h>
 #include <depth_image_proc/depth_traits.h>
+#include <chrono>
 
 namespace depth_image_averaging
 {
@@ -18,12 +19,17 @@ void DepthImageAveragingNodelet::onInit()
 
   // Read parameters
   private_nh_.param("reference_frame", reference_frame_, std::string("world"));
-  private_nh_.param("window_left_margin_", window_left_margin_, 0.5);
-  private_nh_.param("window_right_margin_", window_right_margin_, 0.5);
-  private_nh_.param("min_window_size", min_window_size_, 15);
-  private_nh_.param("max_window_size", max_window_size_, 30);
+  private_nh_.param("window_left_margin", window_left_margin_, 0.5);
+  private_nh_.param("window_right_margin", window_right_margin_, 0.5);
+  private_nh_.param("min_elements", min_elements_, 8);
+  private_nh_.param("max_elements", max_elements_, 32);
   private_nh_.param("max_displacement", max_displacement_, 0.01);
   private_nh_.param("max_rotation", max_rotation_, 0.01);
+  private_nh_.param("averaging_method", averaging_method_, 2);
+  private_nh_.param("true_median", true_median_, true);
+  private_nh_.param("mad_upper_limit_a", mad_upper_limit_a_, 0.005);
+  private_nh_.param("mad_upper_limit_b", mad_upper_limit_b_, 0.002);
+  private_nh_.param("mad_scale", mad_scale_, 1.5);
 
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>();
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -38,7 +44,7 @@ void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageCons
 
   if (depth_image_averager_ == nullptr)
   {
-    depth_image_averager_ = std::make_shared<DepthImageAverager>(image->width, image->height, min_window_size_, max_window_size_);
+    depth_image_averager_ = std::make_shared<DepthImageAverager>(image->width, image->height, min_elements_, max_elements_);
   }
 
   try
@@ -62,7 +68,7 @@ void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageCons
     // If movement detected, publish the accumulated data and reset
     if (is_moved)
     {
-      if (depth_image_averager_->size() >= min_window_size_)
+      if (depth_image_averager_->size() >= min_elements_)
       {
         publishAcc();
       }
@@ -84,7 +90,7 @@ void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageCons
     }
 
     // Is the batch complete?
-    if (depth_image_averager_->size() >= max_window_size_)
+    if (depth_image_averager_->size() >= max_elements_)
     {
       publishAcc();
       // soft-reset
@@ -94,7 +100,7 @@ void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageCons
   }
   catch (tf2::TransformException &ex)
   {
-    NODELET_WARN(ex.what());
+    NODELET_WARN("%s", ex.what());
   }
 }
 
@@ -129,9 +135,27 @@ void DepthImageAveragingNodelet::publishAcc()
   if (depth_image_averager_->size() <= 0) return;
 
   sensor_msgs::ImagePtr acc_image = boost::make_shared<sensor_msgs::Image>();
-  //depth_image_averager_->computeMean(acc_image);
-  //depth_image_averager_->computeMedian(acc_image);
-  depth_image_averager_->computeMAD(acc_image); // todo: parameters
+
+  auto start = std::chrono::high_resolution_clock::now();
+  switch (averaging_method_)
+  {
+    case 0: // MEAN
+      depth_image_averager_->computeMean(acc_image);
+      break;
+    case 1: // MEDIAN
+      depth_image_averager_->computeMedian(acc_image, true_median_);
+      break;
+    case 2: // MAD
+      depth_image_averager_->computeMAD(acc_image, mad_upper_limit_a_, mad_upper_limit_b_, mad_scale_, true_median_);
+      break;
+    default:
+      NODELET_ERROR("Unknown depth averaging method index: %d", averaging_method_);
+      exit(-1);
+  }
+  auto stop = std::chrono::high_resolution_clock::now();
+
+  NODELET_INFO("Depth image averaging took %ld microseconds.", std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count());
+
   acc_pub_.publish(acc_image);
 }
 

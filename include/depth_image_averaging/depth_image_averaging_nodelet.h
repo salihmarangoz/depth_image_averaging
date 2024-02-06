@@ -7,10 +7,7 @@
 
 #include <tf2_ros/transform_listener.h>
 #include <sensor_msgs/Image.h>
-#include <cv_bridge/cv_bridge.h>
 #include <deque>
-#include <mutex>
-#include <thread>
 #include <memory>
 #include <vector>
 
@@ -41,10 +38,15 @@ private:
   std::string reference_frame_;
   double window_left_margin_;
   double window_right_margin_;
-  int min_window_size_;
-  int max_window_size_;
+  int min_elements_;
+  int max_elements_;
   double max_displacement_;
   double max_rotation_;
+  int averaging_method_;
+  bool true_median_;
+  double mad_upper_limit_a_;
+  double mad_upper_limit_b_;
+  double mad_scale_;
 };
 
 }  // namespace depth_image_averaging
