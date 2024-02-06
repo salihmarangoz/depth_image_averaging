@@ -45,7 +45,6 @@ void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageCons
   {
     geometry_msgs::TransformStamped current_transform = tf_buffer_->lookupTransform(reference_frame_, image->header.frame_id, image->header.stamp, ros::Duration(10.0));
     bool is_moved = checkMovement(current_transform, last_stable_transform_);
-    NODELET_INFO("depth_image_averager_->size(): %d", depth_image_averager_->size());
 
     // If in front margin, drop the message and update transform if movement detected
     if ((current_transform.header.stamp - last_stable_transform_.header.stamp).toSec() < window_left_margin_)
@@ -132,7 +131,7 @@ void DepthImageAveragingNodelet::publishAcc()
   sensor_msgs::ImagePtr acc_image = boost::make_shared<sensor_msgs::Image>();
   //depth_image_averager_->computeMean(acc_image);
   //depth_image_averager_->computeMedian(acc_image);
-  depth_image_averager_->computeMAD(acc_image);
+  depth_image_averager_->computeMAD(acc_image); // todo: parameters
   acc_pub_.publish(acc_image);
 }
 

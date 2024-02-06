@@ -18,8 +18,8 @@ public:
   void reset();
   int size();
   bool computeMean(sensor_msgs::ImagePtr &averaged_image);
-  bool computeMedian(sensor_msgs::ImagePtr &averaged_image);
-  bool computeMAD(sensor_msgs::ImagePtr &averaged_image);
+  bool computeMedian(sensor_msgs::ImagePtr &averaged_image, bool true_median = true);
+  bool computeMAD(sensor_msgs::ImagePtr &averaged_image, float mad_upper_limit_a = 0.005, float mad_upper_limit_b = 0.002, float mad_scale = 1.5);
 private:
   void vector2DepthImage_(sensor_msgs::ImagePtr &image, const std::vector<float> arr);
   int width_;

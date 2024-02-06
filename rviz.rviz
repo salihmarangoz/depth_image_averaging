@@ -281,7 +281,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.002211140003055334
+      Size (m): 0.0010000000474974513
       Style: Flat Squares
       Topic: /voxblox_node/surface_pointcloud
       Unreliable: false
@@ -316,7 +316,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.9868743419647217
+      Distance: 0.44014400243759155
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -324,17 +324,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.5746010541915894
-        Y: 0.734859049320221
-        Z: 1.5306470394134521
+        X: 0.6809731721878052
+        Y: 0.5086298584938049
+        Z: 1.615429162979126
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.32479825615882874
+      Pitch: -0.01520108338445425
       Target Frame: <Fixed Frame>
-      Yaw: 5.1785569190979
+      Yaw: 5.0235724449157715
     Saved: ~
 Window Geometry:
   Displays:

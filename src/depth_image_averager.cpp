@@ -111,6 +111,7 @@ bool DepthImageAverager::computeMean(sensor_msgs::ImagePtr &averaged_image)
     // accumulate finite values
     int filtered_size = 0;
     float filtered_sum = 0.0;
+    int inf_count = 0;
     for (int j=0; j<size_; j++)
     {
       float val = arr_[i*max_elements_+j];
@@ -119,11 +120,24 @@ bool DepthImageAverager::computeMean(sensor_msgs::ImagePtr &averaged_image)
         filtered_sum += val;
         filtered_size++;
       }
+      else if (std::isinf(val))
+      {
+        inf_count++;
+      }
     }
+    int nan_count = size_ - filtered_size - inf_count;
 
+    // Min-element check
     if (filtered_size < min_elements_)
     {
-      averaged_arr[i] = std::numeric_limits<float>::quiet_NaN();
+      if (nan_count > inf_count)
+      {
+        averaged_arr[i] = std::numeric_limits<float>::quiet_NaN();
+      }
+      else
+      {
+        averaged_arr[i] = std::numeric_limits<float>::infinity();
+      }
       continue;
     }
 
@@ -136,7 +150,7 @@ bool DepthImageAverager::computeMean(sensor_msgs::ImagePtr &averaged_image)
 
 //////////////////////////////////////////////////////////////////////////
 
-bool DepthImageAverager::computeMedian(sensor_msgs::ImagePtr &averaged_image)
+bool DepthImageAverager::computeMedian(sensor_msgs::ImagePtr &averaged_image, bool true_median)
 {
   if (size_ <= 0) return false;
 
@@ -146,6 +160,7 @@ bool DepthImageAverager::computeMedian(sensor_msgs::ImagePtr &averaged_image)
   std::vector<float> averaged_arr;
   averaged_arr.resize(width_*height_);
 
+  int inf_count = 0;
   for (int i=0; i < width_*height_; i++)
   {
     // filter non-finite values
@@ -158,30 +173,43 @@ bool DepthImageAverager::computeMedian(sensor_msgs::ImagePtr &averaged_image)
         tmp_buffer[filtered_size] = val;
         filtered_size++;
       }
+      else if (std::isinf(val))
+      {
+        inf_count++;
+      }
     }
+    int nan_count = size_ - filtered_size - inf_count;
 
+    // Min-element check
     if (filtered_size < min_elements_)
     {
-      averaged_arr[i] = std::numeric_limits<float>::quiet_NaN();
+      if (nan_count > inf_count)
+      {
+        averaged_arr[i] = std::numeric_limits<float>::quiet_NaN();
+      }
+      else
+      {
+        averaged_arr[i] = std::numeric_limits<float>::infinity();
+      }
       continue;
     }
 
     auto m = tmp_buffer.begin() + filtered_size / 2;
     std::nth_element(tmp_buffer.begin(), m, tmp_buffer.begin() + filtered_size);
-    averaged_arr[i] = tmp_buffer[filtered_size / 2];
-/*  // true median, but slower
-    if (filtered_size % 2 == 1)
+
+    if (true_median && filtered_size % 2 == 0)
     {
-        averaged_arr[i] = tmp_buffer[filtered_size / 2];
+      // true median
+      std::nth_element(tmp_buffer.begin(), m-1, tmp_buffer.begin() + filtered_size);
+      float val_a = tmp_buffer[filtered_size / 2 - 1];
+      float val_b = tmp_buffer[filtered_size / 2];
+      averaged_arr[i] = (val_a + val_b) / 2.0;
     }
     else
     {
-        std::nth_element(tmp_buffer.begin(), m-1, tmp_buffer.begin() + filtered_size);
-        float val_a = tmp_buffer[filtered_size / 2 - 1];
-        float val_b = tmp_buffer[filtered_size / 2];
-        averaged_arr[i] = (val_a + val_b) / 2.0;
+      // fast median, but biased if the array length is even
+      averaged_arr[i] = tmp_buffer[filtered_size / 2];
     }
-*/
   }
 
   vector2DepthImage_(averaged_image, averaged_arr);
@@ -190,7 +218,7 @@ bool DepthImageAverager::computeMedian(sensor_msgs::ImagePtr &averaged_image)
 
 //////////////////////////////////////////////////////////////////////////
 
-bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image)
+bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image, float mad_upper_limit_a, float mad_upper_limit_b, float mad_scale)
 {
   if (size_ <= 0) return false;
 
@@ -200,6 +228,7 @@ bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image)
   std::vector<float> averaged_arr;
   averaged_arr.resize(width_*height_);
 
+  int inf_count = 0;
   for (int i=0; i < width_*height_; i++)
   {
     // filter non-finite values
@@ -212,11 +241,24 @@ bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image)
         tmp_buffer[filtered_size] = val;
         filtered_size++;
       }
+      else if (std::isinf(val))
+      {
+        inf_count++;
+      }
     }
+    int nan_count = size_ - filtered_size - inf_count;
 
+    // Min-element check
     if (filtered_size < min_elements_)
     {
-      averaged_arr[i] = std::numeric_limits<float>::quiet_NaN();
+      if (nan_count > inf_count)
+      {
+        averaged_arr[i] = std::numeric_limits<float>::quiet_NaN();
+      }
+      else
+      {
+        averaged_arr[i] = std::numeric_limits<float>::infinity();
+      }
       continue;
     }
 
@@ -225,52 +267,43 @@ bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image)
     std::nth_element(tmp_buffer.begin(), m, tmp_buffer.begin() + filtered_size);
     float median_value = tmp_buffer[filtered_size / 2];
 
-    if (!std::isfinite(median_value))
-    {
-      averaged_arr[i] = median_value;
-      continue;
-    }
-
     // compute mad
     float mad = 0;
-    for (int j=0; j<size_; j++)
+    for (int j=0; j<filtered_size; j++)
     {
-      float val = arr_[i*max_elements_+j];
-      if (std::isfinite(val))
-      {
-        mad += std::fabs(val-median_value);
-      }
+      mad += std::fabs(tmp_buffer[j]-median_value);
     }
     mad /= filtered_size;
 
-    // TODO
-    if (mad > 0.005)
+    // MAD scale check
+    if (mad > (mad_upper_limit_a*median_value + mad_upper_limit_b) )
     {
       averaged_arr[i] = std::numeric_limits<float>::quiet_NaN();
       continue;
     }
 
     // filter outliers and compute mean
-    float mad_sum = 0;
+    float mad_mean = 0;
     int mad_size = 0;
     for (int j=0; j<size_; j++)
     {
       float val = arr_[i*max_elements_+j];
-      if (std::isfinite(val) && std::fabs(val-median_value) < 1.5*mad ) // todo
+      if (std::isfinite(val) && std::fabs(val-median_value) < mad_scale*mad )
       {
-        mad_sum += val;
+        mad_mean += val;
         mad_size++;
       }
     }
-    mad_sum /= mad_size;
+    mad_mean /= mad_size;
 
+    // Min-element check
     if (mad_size < min_elements_)
     {
       averaged_arr[i] = std::numeric_limits<float>::quiet_NaN();
       continue;
     }
 
-    averaged_arr[i] = mad_sum;
+    averaged_arr[i] = mad_mean;
   }
 
   vector2DepthImage_(averaged_image, averaged_arr);
