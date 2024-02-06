@@ -40,6 +40,7 @@ private:
   double window_right_margin_;
   int min_elements_;
   int max_elements_;
+  bool drop_last_;
   double max_displacement_;
   double max_rotation_;
   int averaging_method_;

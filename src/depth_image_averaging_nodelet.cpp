@@ -23,6 +23,7 @@ void DepthImageAveragingNodelet::onInit()
   private_nh_.param("window_right_margin", window_right_margin_, 0.5);
   private_nh_.param("min_elements", min_elements_, 8);
   private_nh_.param("max_elements", max_elements_, 32);
+  private_nh_.param("drop_last", drop_last_, false);
   private_nh_.param("max_displacement", max_displacement_, 0.01);
   private_nh_.param("max_rotation", max_rotation_, 0.01);
   private_nh_.param("averaging_method", averaging_method_, 2);
@@ -68,7 +69,7 @@ void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageCons
     // If movement detected, publish the accumulated data and reset
     if (is_moved)
     {
-      if (depth_image_averager_->size() >= min_elements_)
+      if (depth_image_averager_->size() >= min_elements_ && (depth_image_averager_->size() >= max_elements_ || !drop_last_) )
       {
         publishAcc();
       }
