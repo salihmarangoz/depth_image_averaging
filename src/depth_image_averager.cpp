@@ -305,7 +305,7 @@ bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image, float
       continue;
     }
 
-    averaged_arr[i] = mad_mean;
+    averaged_arr[i] = mad_mean; // TODO: maybe a weighted avg between the mad_mean and the median value? needs more investigation.
   }
 
   vector2DepthImage_(averaged_image, averaged_arr);

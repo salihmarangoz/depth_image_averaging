@@ -95,7 +95,7 @@ This package is tested on Ubuntu 20.04 and ROS Noetic. Other requirements are co
 		In radians. Maximum rotation of the sensor w.r.t. reference frame. Uses the formula for geodesic distance between the two quaternions. Resets the batch if the threshold is exceeded.
 
 `averaging_method` (int, default: 2)
-		Selects the averaging method. `MEAN=0` computes the mean value, `MEDIAN=1` computes the median value, `MAD=2` filters outliers using MAD and computes the mean/median value using the remaining data.
+		Selects the averaging method. `MEAN=0` computes the mean value, `MEDIAN=1` computes the median value, `MAD=2` filters outliers using MAD and computes the mean value using the remaining data.
 
 `true_median` (bool, default: true)
 		If true, uses the accurate median computation method for even number of elements which requires two iterations. Otherwise, computes median in a single iteration but the median may be biased towards the smallest value. ([Wikipedia](https://simple.wikipedia.org/wiki/Median))
