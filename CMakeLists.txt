@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf2_ros
   nodelet
+  image_transport
 )
 
 ###################################
@@ -20,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES depth_image_averaging_nodelet
-  CATKIN_DEPENDS depth_image_proc roscpp sensor_msgs std_msgs tf2_ros nodelet
+  CATKIN_DEPENDS depth_image_proc roscpp sensor_msgs std_msgs tf2_ros nodelet image_transport
 )
 
 ###########

@@ -9,7 +9,7 @@ namespace depth_image_averaging
 
 DepthImageAveragingNodelet::DepthImageAveragingNodelet()
 {
-  last_stable_image_ = nullptr;
+
 }
 
 void DepthImageAveragingNodelet::onInit()
@@ -18,26 +18,43 @@ void DepthImageAveragingNodelet::onInit()
   private_nh_ = getPrivateNodeHandle();
 
   // Read parameters
+  private_nh_.param("use_image_transport", use_image_transport_, true);
   private_nh_.param("reference_frame", reference_frame_, std::string("world"));
   private_nh_.param("window_left_margin", window_left_margin_, 0.5);
   private_nh_.param("window_right_margin", window_right_margin_, 0.5);
   private_nh_.param("min_elements", min_elements_, 8);
   private_nh_.param("max_elements", max_elements_, 32);
-  private_nh_.param("drop_last", drop_last_, false);
+  private_nh_.param("drop_last", drop_last_, true);
   private_nh_.param("max_displacement", max_displacement_, 0.01);
   private_nh_.param("max_rotation", max_rotation_, 0.01);
   private_nh_.param("averaging_method", averaging_method_, 2);
   private_nh_.param("true_median", true_median_, true);
-  private_nh_.param("mad_upper_limit_a", mad_upper_limit_a_, 0.005);
-  private_nh_.param("mad_upper_limit_b", mad_upper_limit_b_, 0.002);
+  private_nh_.param("mad_upper_limit_a", mad_upper_limit_a_, 0.008);
+  private_nh_.param("mad_upper_limit_b", mad_upper_limit_b_, 0.0015);
   private_nh_.param("mad_scale", mad_scale_, 1.5);
 
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>();
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-  depth_image_pub_ = nh_.advertise<sensor_msgs::Image>("depth_out", 20);
-  depth_image_sub_ = nh_.subscribe("depth_in", 150, &DepthImageAveragingNodelet::depthImageCallback, this);
+  if (use_image_transport_)
+  {
+    it_ = std::make_shared<image_transport::ImageTransport>(nh_);
+    camera_pub_ = it_->advertiseCamera("camera/averaged_depth/image_raw", 20);
+    camera_sub_ = it_->subscribeCamera("camera/depth/image_raw", 150, boost::bind(&DepthImageAveragingNodelet::cameraCallback, this, _1, _2));
+  }
+  else
+  {
+    depth_image_pub_ = nh_.advertise<sensor_msgs::Image>("camera/averaged_depth/image_raw", 20);
+    depth_image_sub_ = nh_.subscribe("camera/depth/image_raw", 150, &DepthImageAveragingNodelet::depthImageCallback, this);
+  }
+
 };
+
+void DepthImageAveragingNodelet::cameraCallback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& camera_info)
+{
+  last_camera_info_ = camera_info;
+  depthImageCallback(image);
+}
 
 void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageConstPtr &image)
 {
@@ -157,7 +174,17 @@ void DepthImageAveragingNodelet::publishAcc()
   std::chrono::duration<float> timediff = stop - start;
   NODELET_INFO("Depth image averaging took %f seconds.", timediff.count());
 
-  depth_image_pub_.publish(acc_image);
+  if (use_image_transport_)
+  {
+    boost::shared_ptr<sensor_msgs::CameraInfo> camera_info = boost::make_shared<sensor_msgs::CameraInfo>(*last_camera_info_);
+    camera_info->header = acc_image->header;
+    camera_pub_.publish(acc_image, camera_info);
+  }
+  else
+  {
+    depth_image_pub_.publish(acc_image);
+  }
+  
 }
 
 }  // namespace depth_image_averaging

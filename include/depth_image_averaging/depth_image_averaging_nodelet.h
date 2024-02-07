@@ -5,6 +5,7 @@
 #include "ros/ros.h"
 #include <depth_image_averaging/depth_image_averager.h>
 
+#include <image_transport/image_transport.h>
 #include <tf2_ros/transform_listener.h>
 #include <sensor_msgs/Image.h>
 #include <deque>
@@ -20,21 +21,28 @@ public:
   DepthImageAveragingNodelet();
 private:
   virtual void onInit();
+  void cameraCallback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& camera_info);
   void depthImageCallback(const sensor_msgs::ImageConstPtr &image);
   void publishAcc();
   bool checkMovement(const geometry_msgs::TransformStamped& transform_a, const geometry_msgs::TransformStamped& transform_b);
 
   ros::NodeHandle nh_, private_nh_;
-  ros::Subscriber depth_image_sub_;
-  ros::Publisher depth_image_pub_;
   std::shared_ptr<DepthImageAverager> depth_image_averager_;
   std::deque<sensor_msgs::ImageConstPtr> image_buffer_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   geometry_msgs::TransformStamped last_stable_transform_;
-  sensor_msgs::ImageConstPtr last_stable_image_;
+
+  ros::Subscriber depth_image_sub_;
+  ros::Publisher depth_image_pub_;
+
+  std::shared_ptr<image_transport::ImageTransport> it_;
+  image_transport::CameraSubscriber camera_sub_;
+  image_transport::CameraPublisher camera_pub_;
+  sensor_msgs::CameraInfoConstPtr last_camera_info_;
 
   // Parameters
+  bool use_image_transport_;
   std::string reference_frame_;
   double window_left_margin_;
   double window_right_margin_;
