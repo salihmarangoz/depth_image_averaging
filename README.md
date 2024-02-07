@@ -1,12 +1,49 @@
 # depth_image_averaging
 
+## Introduction
 
+Depth image averaging can be regarded as the most simple way of combining depth images compared to more sophisticated methods such as TSDFs. Compared to these methods, this solution needs the sensor to stay still for a certain amount of time to generate accurate depth measurements of a static scene. If that is the case for your platform, it may be better to average first and then feed the averaged images to the mapping (not SLAM!) solution. In this sense, this package solves a few problems:
 
+- Timing problems between the sensor (camera) and the moving platform that is affecting the quality of the map.
+- Very-slow registration of mapping methods (e.g. TSDF) especially in very high resolutions. This becomes a more important problem on slower hardwares.
 
+Contributions are welcome.
 
+## How it works
 
+### Batching and Dropping
+
+The aim of this package is to average depth images while the sensor stays still. As seen below, the averager drops a part of accumulated images after the sensor stops and the sensor starts moving, and computes images in batches if enough data is accumulated. 
+
+![how_it_works](assets/how_it_works.svg)
+
+Figure: Red depth images are dropped. Blue depth images are valid for processing. Green depth images are the pixel-wise averaged images that are published.
+
+## MAD Averager
+
+Averaging of depth values can be done via computing mean or median. However there are certain problems. Mean is susceptible to outliers, and median is biased towards the side with the most outliers. Alternatively, outliers can be filtered out with the MAD (Mean absolute deviation) approach and the trimmed mean can be calculated as shown below.
+
+![mad_filtering.drawio](assets/mad_filtering.drawio.svg)
+
+Figure: In the image, red values are dropped, blue values are regarded as valid and the trimmed mean is computed using these values. Red line shows the trimmed mean value.
+
+MAD filtering/averaging steps are as follows:
+
+- If the number of finite values are below a certain threshold then return NaN or inf+ based on which is the most frequent.
+- Find the median.
+- Compute MAD of all values w.r.t. the median value.
+- If the MAD value exceeds a certain threshold, return NaN.
+- Filter values outside the scaled MAD region.
+- If the number of remaining values are less than a certain threshold, return NaN.
+- Compute the average of the remaining values (aka trimmed mean).
+
+## Requirements
+
+This package is tested on Ubuntu 20.04 and ROS Noetic. Other requirements are core packages of ROS which are listed in the `package.xml` file. 
 
 ## ROS
+
+**Note:** If the latency and processing power is important, this package also provides a nodelet, allowing zero-copy transport.
 
 ### Subscribed Topics
 
@@ -33,16 +70,16 @@
 		Reference transformation frame for detecting sensor movements.
 
 `window_left_margin` (double, default: 0.5)
-		In seconds. TODO
+		In seconds. Drops the images for the given time interval after the movement is stopped.
 
 `window_right_margin` (double, default: 0.5)
-		In seconds. TODO
+		In seconds. Drops the images for the given time interval before the movement is started.
 
 `min_elements` (int, default: 8)
 		Minimum number of measurements required for valid averaging.
 
 `max_elements` (int, default: 32)
-		Maximum number of measurements TODO
+		Maximum number of measurements. This value also specifies the maximum batch size and affects the memory use linearly.
 
 `drop_last` (bool, default: true)
 		If true, drops the whole batch if the batch is not complete after detecting sensor movement.
@@ -57,16 +94,16 @@
 		Selects the averaging method. `MEAN=0` computes the mean value, `MEDIAN=1` computes the median value, `MAD=2` filters outliers using MAD and computes the mean/median value using the remaining data.
 
 `true_median` (bool, default: true)
-		If true, uses the accurate median computation method for even number of measurements which requires two quick select iterations. Otherwise, uses one quick select iterations but the median may be biased towards the zero. ([Wikipedia](https://simple.wikipedia.org/wiki/Median))
+		If true, uses the accurate median computation method for even number of elements which requires two iterations. Otherwise, computes median in a single iteration but the median may be biased towards the smallest value. ([Wikipedia](https://simple.wikipedia.org/wiki/Median))
 
 `mad_upper_limit_a` (double, default: 0.008)
-		Used if the averaging method is `MAD`. TODO
+		Drops the averaged value for a pixel if the MAD value exceeds the given threshold. Threshold is computed via $a*median+b$. Used if the averaging method is `MAD`.
 
 `mad_upper_limit_b` (double, default: 0.0015)
-		Used if the averaging method is `MAD`. TODO
+		Drops the averaged value for a pixel if the MAD value exceeds the given threshold. Threshold is computed via $a*median+b$. Used if the averaging method is `MAD`.
 
 `mad_scale` (double, default: 1.5)
-		Used if the averaging method is `MAD`. TODO
+		Drops outliers having deviation higher than the scaled MAD. Used if the averaging method is `MAD`.
 
 ### Required tf Transforms
 
