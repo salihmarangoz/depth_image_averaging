@@ -9,6 +9,10 @@ Depth image averaging can be regarded as the most simple way of combining depth 
 
 Contributions are welcome.
 
+## Quick Start
+
+Check the `launch/start.launch` file. You would need a RGBD/Depth sensor or a bag file including RGBD/Depth data since they are not provided with this package.
+
 ## How it works
 
 ### Batching and Dropping
