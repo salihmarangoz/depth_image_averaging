@@ -112,3 +112,7 @@ This package is tested on Ubuntu 20.04 and ROS Noetic. Other requirements are co
 ### Required tf Transforms
 
 `reference_frame` <==> Sensor Frame
+
+## Disclaimer
+
+This package is developed as a part of created work as a Student Research Assistant at the University of Bonn Humanoid Robots Lab.
