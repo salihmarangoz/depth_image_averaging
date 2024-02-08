@@ -4,6 +4,10 @@ cmake_policy(SET CMP0148 OLD) # to surpress warnings. run: cmake --help-policy C
 
 add_compile_options(-std=c++17)
 
+set(USE_OPENCL 1)
+
+add_compile_definitions(USE_OPENCL=${USE_OPENCL})
+
 find_package(catkin REQUIRED COMPONENTS
   depth_image_proc
   roscpp
@@ -13,6 +17,10 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   image_transport
 )
+
+if(USE_OPENCL)
+find_package(OpenCL REQUIRED)
+endif()
 
 ###################################
 ## catkin specific configuration ##
@@ -34,7 +42,12 @@ include_directories(
 )
 
 add_library(depth_image_averaging_nodelet src/depth_image_averaging_nodelet.cpp src/depth_image_averager.cpp)
+
+if(USE_OPENCL)
+target_link_libraries(depth_image_averaging_nodelet ${catkin_LIBRARIES} OpenCL::OpenCL)
+else()
 target_link_libraries(depth_image_averaging_nodelet ${catkin_LIBRARIES})
+endif()
 
 add_executable(depth_image_averaging_node src/depth_image_averaging_node.cpp)
 target_link_libraries(depth_image_averaging_node ${catkin_LIBRARIES})

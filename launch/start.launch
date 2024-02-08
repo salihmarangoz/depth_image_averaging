@@ -12,6 +12,7 @@
       <remap from="camera/averaged_depth/image_raw" to="/camera/averaged_aligned_depth_to_color/image_raw"/>
       <remap from="camera/depth/camera_info" to="/camera/aligned_depth_to_color/camera_info"/>
       <remap from="camera/averaged_depth/camera_info" to="/camera/averaged_aligned_depth_to_color/camera_info"/>
+      <param name="averaging_method" value="3"/>
   </node>
 
   <!-- Experiment with VoxBlox 

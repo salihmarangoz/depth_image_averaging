@@ -5,6 +5,12 @@
 #include <vector>
 #include <depth_image_proc/depth_traits.h>
 
+#define USE_OPENCL (1) // TODO
+#if USE_OPENCL
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#include <CL/cl.h>
+#endif // USE_OPENCL
+
 namespace depth_image_averaging
 {
 
@@ -20,6 +26,7 @@ public:
   bool computeMean(sensor_msgs::ImagePtr &averaged_image);
   bool computeMedian(sensor_msgs::ImagePtr &averaged_image, bool true_median);
   bool computeMAD(sensor_msgs::ImagePtr &averaged_image, float mad_upper_limit_a, float mad_upper_limit_b, float mad_scale, bool true_median);
+
 private:
   void vector2DepthImage_(sensor_msgs::ImagePtr &image, const std::vector<float> arr);
   int width_;
@@ -29,6 +36,26 @@ private:
   int size_;
   sensor_msgs::ImageConstPtr last_image_;
   std::vector<float> arr_;
+
+#if USE_OPENCL
+public:
+  bool computeMeanOpenCL(sensor_msgs::ImagePtr &averaged_image);
+
+private:
+  bool is_opencl_initialized_;
+  cl_context context_;
+  cl_command_queue command_queue_;
+  cl_device_id device_id_;
+  cl_mem input_buffer_;
+  cl_mem output_buffer_;
+  cl_kernel compute_mean_kernel_;
+  cl_kernel compute_median_kernel_;
+  cl_kernel compute_mad_kernel_;
+
+  cl_int initOpenCL_();
+  cl_kernel createKernelOpenCL_(const std::string &kernel_file);
+#endif // USE_OPENCL
+
 };
 
 //////////////////////////////////////////////////////////////////////////

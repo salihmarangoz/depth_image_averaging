@@ -166,6 +166,11 @@ void DepthImageAveragingNodelet::publishAcc()
     case 2: // MAD
       depth_image_averager_->computeMAD(acc_image, mad_upper_limit_a_, mad_upper_limit_b_, mad_scale_, true_median_);
       break;
+#ifdef USE_OPENCL
+    case 3: // MEAN (OPENCL)
+      depth_image_averager_->computeMeanOpenCL(acc_image);
+      break;
+#endif
     default:
       NODELET_ERROR("Unknown depth averaging method index: %d", averaging_method_);
       exit(-1);

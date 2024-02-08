@@ -2,6 +2,9 @@
 #include <sensor_msgs/image_encodings.h>
 #include <depth_image_proc/depth_traits.h>
 #include <boost/make_shared.hpp>
+#include <iostream>
+#include <fstream>
+#include <string>
 
 namespace depth_image_averaging
 {
@@ -17,6 +20,13 @@ DepthImageAverager::DepthImageAverager(int width, int height, int min_elements, 
 
   size_ = 0;
   arr_.resize(width*height*max_elements);
+
+#if USE_OPENCL
+  is_opencl_initialized_ = false;
+  compute_mean_kernel_ = NULL;
+  compute_median_kernel_ = NULL;
+  compute_mad_kernel_ = NULL;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -313,5 +323,78 @@ bool DepthImageAverager::computeMAD(sensor_msgs::ImagePtr &averaged_image, float
 }
 
 //////////////////////////////////////////////////////////////////////////
+#if USE_OPENCL
+
+cl_int DepthImageAverager::initOpenCL_()
+{
+  cl_platform_id platform_id = NULL;
+  device_id_ = NULL;
+  cl_uint num_devices, num_platforms;
+  cl_int ret = clGetPlatformIDs(1, &platform_id, &num_platforms);
+  ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_CPU, 1, &device_id_, &num_devices);
+
+  context_ = clCreateContext(NULL, 1, &device_id_, NULL, NULL, &ret);
+  command_queue_ = clCreateCommandQueue(context_, device_id_, 0, &ret);
+
+  input_buffer_ = clCreateBuffer(context_, CL_MEM_READ_ONLY, sizeof(float) * width_*height_*max_elements_, NULL, &ret);
+  output_buffer_ = clCreateBuffer(context_, CL_MEM_WRITE_ONLY, sizeof(float) * width_*height_, NULL, &ret);
+
+  is_opencl_initialized_ = true;
+  return ret;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+cl_kernel DepthImageAverager::createKernelOpenCL_(const std::string &kernel_file)
+{
+  // read the source file
+  std::ifstream stream(kernel_file.c_str());
+  if (!stream.is_open()) {
+    std::cout << "Cannot open file: " << kernel_file << std::endl;
+    exit(1);
+  }
+  std::string kernel_source(std::istreambuf_iterator<char>(stream), (std::istreambuf_iterator<char>()));
+
+  cl_int ret;
+  size_t kernel_source_size = kernel_source.length();
+  char *tmp = kernel_source.data();
+  cl_program program = clCreateProgramWithSource(context_, 1, (const char**)&tmp, (const size_t *)&kernel_source_size, &ret);
+  clBuildProgram(program, 1, &device_id_, NULL, NULL, NULL);
+  cl_kernel kernel = clCreateKernel(program, "compute_mean", &ret);
+
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&input_buffer_);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&output_buffer_);
+
+  return kernel;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+bool DepthImageAverager::computeMeanOpenCL(sensor_msgs::ImagePtr &averaged_image)
+{
+  if (size_ <= 0) return false;
+
+  if (!is_opencl_initialized_) initOpenCL_();
+
+  if (compute_mean_kernel_ == NULL) compute_mean_kernel_ = createKernelOpenCL_("/home/salih/catkin_ws/src/depth_image_averaging/src/opencl/computeMean.cl");
+
+  // set the input
+  cl_int ret = clEnqueueWriteBuffer(command_queue_, input_buffer_, CL_TRUE, 0, sizeof(float) * width_*height_*max_elements_, arr_.data(), 0, NULL, NULL);
+
+  // run the kernel
+  size_t global_item_size = width_*height_;
+  ret = clEnqueueNDRangeKernel(command_queue_, compute_mean_kernel_, 1, NULL, &global_item_size, NULL, 0, NULL, NULL);
+
+  // get the output
+  std::vector<float> averaged_arr;
+  averaged_arr.resize(width_*height_);
+  ret = clEnqueueReadBuffer(command_queue_, output_buffer_, CL_TRUE, 0, sizeof(float) * width_*height_, averaged_arr.data(), 0, NULL, NULL);
+
+  vector2DepthImage_(averaged_image, averaged_arr);
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+#endif // USE_OPENCL
 
 } // depth_image_averaging
