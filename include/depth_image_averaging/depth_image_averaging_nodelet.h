@@ -42,6 +42,7 @@ private:
   sensor_msgs::CameraInfoConstPtr last_camera_info_;
 
   // Parameters
+  std::string cl_kernel_path_;
   bool use_image_transport_;
   std::string reference_frame_;
   double window_left_margin_;

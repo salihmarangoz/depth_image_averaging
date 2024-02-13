@@ -4,7 +4,7 @@ cmake_policy(SET CMP0148 OLD) # to surpress warnings. run: cmake --help-policy C
 
 add_compile_options(-std=c++17)
 
-set(USE_OPENCL 1)
+set(USE_OPENCL 0) # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 add_compile_definitions(USE_OPENCL=${USE_OPENCL})
 
@@ -70,3 +70,12 @@ install(DIRECTORY launch
 install(FILES nodelet_plugins.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
+
+file(GLOB KERNELS src/opencl/*.cl)
+foreach(CurrentKernel IN LISTS KERNELS)
+    cmake_path(GET CurrentKernel FILENAME FileName)
+    add_custom_command(
+                TARGET depth_image_averaging_node PRE_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CurrentKernel} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/opencl/${FileName}
+                COMMENT "Copying kernel: ${CurrenKernel}")
+endforeach()

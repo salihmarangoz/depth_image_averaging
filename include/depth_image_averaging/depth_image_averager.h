@@ -5,7 +5,6 @@
 #include <vector>
 #include <depth_image_proc/depth_traits.h>
 
-#define USE_OPENCL (1) // TODO
 #if USE_OPENCL
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <CL/cl.h>
@@ -23,9 +22,9 @@ public:
   bool add(const sensor_msgs::ImageConstPtr &image);
   void reset();
   int size();
-  bool computeMean(sensor_msgs::ImagePtr &averaged_image);
-  bool computeMedian(sensor_msgs::ImagePtr &averaged_image, bool true_median);
-  bool computeMAD(sensor_msgs::ImagePtr &averaged_image, float mad_upper_limit_a, float mad_upper_limit_b, float mad_scale, bool true_median);
+  int computeMean(sensor_msgs::ImagePtr &averaged_image);
+  int computeMedian(sensor_msgs::ImagePtr &averaged_image, bool true_median);
+  int computeMAD(sensor_msgs::ImagePtr &averaged_image, float mad_upper_limit_a, float mad_upper_limit_b, float mad_scale, bool true_median);
 
 private:
   void vector2DepthImage_(sensor_msgs::ImagePtr &image, const std::vector<float> arr);
@@ -39,7 +38,7 @@ private:
 
 #if USE_OPENCL
 public:
-  bool computeMeanOpenCL(sensor_msgs::ImagePtr &averaged_image);
+  int computeOpenCL(sensor_msgs::ImagePtr &averaged_image, const std::string& kernel_file);
 
 private:
   bool is_opencl_initialized_;
@@ -48,12 +47,10 @@ private:
   cl_device_id device_id_;
   cl_mem input_buffer_;
   cl_mem output_buffer_;
-  cl_kernel compute_mean_kernel_;
-  cl_kernel compute_median_kernel_;
-  cl_kernel compute_mad_kernel_;
+  cl_kernel opencl_kernel_;
 
   cl_int initOpenCL_();
-  cl_kernel createKernelOpenCL_(const std::string &kernel_file);
+  cl_kernel createKernelOpenCL_(const std::string &kernel_file, cl_int &ret);
 #endif // USE_OPENCL
 
 };

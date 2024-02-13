@@ -43,7 +43,7 @@ MAD filtering/averaging steps are as follows:
 
 ## Requirements
 
-This package is tested on Ubuntu 20.04 and ROS Noetic. Other requirements are core packages of ROS which are listed in the `package.xml` file. 
+This package is tested on Ubuntu 20.04 and ROS Noetic. Other requirements are core packages of ROS which are listed in the `package.xml` file. This package also supports acceleration with OpenCL (see `CMakeLists.txt`).
 
 ## ROS
 
@@ -95,10 +95,13 @@ This package is tested on Ubuntu 20.04 and ROS Noetic. Other requirements are co
 		In radians. Maximum rotation of the sensor w.r.t. reference frame. Uses the formula for geodesic distance between the two quaternions. Resets the batch if the threshold is exceeded.
 
 `averaging_method` (int, default: 2)
-		Selects the averaging method. `MEAN=0` computes the mean value, `MEDIAN=1` computes the median value, `MAD=2` filters outliers using MAD and computes the mean value using the remaining data.
+		Selects the averaging method. `MEAN=0` computes the mean value, `MEDIAN=1` computes the median value, `MAD=2` filters outliers using MAD and computes the mean value using the remaining data, and lastly `OPENCL=-1` forwards the computing to the provided OpenCL kernel. In this case, do not forget to set `USE_OPENCL` to 1 in the CMakeLists.txt !
+
+`cl_kernel_path` (double, default: "")
+		OpenCL kernel file. Kernel files are located in `src/cl/`. If `averaging_method=-1` then the selected kernel file is executed for filtering. This feature is experimental and passing some parameters is not supported yet.
 
 `true_median` (bool, default: true)
-		If true, uses the accurate median computation method for even number of elements which requires two iterations. Otherwise, computes median in a single iteration but the median may be biased towards the smallest value. ([Wikipedia](https://simple.wikipedia.org/wiki/Median))
+		If true, uses the accurate median computation method for even number of elements which requires two iterations. Otherwise, computes median in a single iteration but the median may be biased. ([Wikipedia](https://simple.wikipedia.org/wiki/Median))
 
 `mad_upper_limit_a` (double, default: 0.008)
 		Drops the averaged value for a pixel if the MAD value exceeds the given threshold. Threshold is computed via $a*median+b$. Used if the averaging method is `MAD`.
@@ -112,6 +115,16 @@ This package is tested on Ubuntu 20.04 and ROS Noetic. Other requirements are co
 ### Required tf Transforms
 
 `reference_frame` <==> Sensor Frame
+
+## Benchmark
+
+Computation times with default parameters on a selected bag file with `1280x720/uint16` depth image on a laptop with Ryzen 9 5900HX (boost disabled) and RTX3080 Mobile (115W, boost disabled).
+
+| Averaging Method | Computation Time (s) (CPU-SingleThread) | Computation Time (s) (OpenCL) | Performance Improvement using OpenCL |
+| ---------------- | --------------------------------------- | ----------------------------- | ------------------------------------ |
+| Mean             | 0.01                                    | 0.0058                        | x1.722                               |
+| Median           | 0.09                                    | 0.0063                        | x14.29                               |
+| MAD              | 0.115                                   | 0.0068                        | x16.91                               |
 
 ## Disclaimer
 

@@ -18,6 +18,7 @@ void DepthImageAveragingNodelet::onInit()
   private_nh_ = getPrivateNodeHandle();
 
   // Read parameters
+  private_nh_.param("cl_kernel_path", cl_kernel_path_, std::string(""));
   private_nh_.param("use_image_transport", use_image_transport_, true);
   private_nh_.param("reference_frame", reference_frame_, std::string("world"));
   private_nh_.param("window_left_margin", window_left_margin_, 0.5);
@@ -155,21 +156,26 @@ void DepthImageAveragingNodelet::publishAcc()
   sensor_msgs::ImagePtr acc_image = boost::make_shared<sensor_msgs::Image>();
 
   auto start = std::chrono::high_resolution_clock::now();
+  int ret;
   switch (averaging_method_)
   {
     case 0: // MEAN
-      depth_image_averager_->computeMean(acc_image);
+      ret = depth_image_averager_->computeMean(acc_image);
       break;
     case 1: // MEDIAN
-      depth_image_averager_->computeMedian(acc_image, true_median_);
+      ret = depth_image_averager_->computeMedian(acc_image, true_median_);
       break;
     case 2: // MAD
-      depth_image_averager_->computeMAD(acc_image, mad_upper_limit_a_, mad_upper_limit_b_, mad_scale_, true_median_);
+      ret = depth_image_averager_->computeMAD(acc_image, mad_upper_limit_a_, mad_upper_limit_b_, mad_scale_, true_median_);
       break;
-#ifdef USE_OPENCL
-    case 3: // MEAN (OPENCL)
-      depth_image_averager_->computeMeanOpenCL(acc_image);
+#if USE_OPENCL
+    case -1: // OPENCL
+      ret = depth_image_averager_->computeOpenCL(acc_image, cl_kernel_path_);
       break;
+#else
+    case -1: // OPENCL
+      NODELET_ERROR("Compile depth image aveger with OpenCL enabled! See USE_OPENCL in CMakeLists.txt");
+      exit(1);
 #endif
     default:
       NODELET_ERROR("Unknown depth averaging method index: %d", averaging_method_);
@@ -178,6 +184,12 @@ void DepthImageAveragingNodelet::publishAcc()
   auto stop = std::chrono::high_resolution_clock::now();
   std::chrono::duration<float> timediff = stop - start;
   NODELET_INFO("Depth image averaging took %f seconds.", timediff.count());
+
+  if (ret != 0)
+  {
+    NODELET_ERROR("Avaraging failed! Return value: %d", ret);
+    return;
+  }
 
   if (use_image_transport_)
   {
