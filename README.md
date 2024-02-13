@@ -9,6 +9,12 @@ Depth image averaging can be regarded as the most simple way of combining depth 
 
 Contributions are welcome.
 
+**ToDo:**
+
+- Instead of adding images one by one to a large array, images can be added pixel by pixel to improve cache efficiency. This should reduce CPU usage.
+- Some parameters in OpenCL kernels are constant. This needs a bit of refactoring.
+- Adding an example bag file would be nice.
+
 ## Quick Start
 
 Check the `launch/start.launch` file. You would need a RGBD/Depth sensor or a bag file including RGBD/Depth data since they are not provided with this package.
