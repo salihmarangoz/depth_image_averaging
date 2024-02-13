@@ -24,6 +24,7 @@
 
 #if USE_OPENCL
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_TARGET_OPENCL_VERSION 220
 #include <CL/cl.h>
 #endif // USE_OPENCL
 
