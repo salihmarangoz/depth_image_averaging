@@ -1,0 +1,7 @@
+<library path="lib/libdepth_image_averaging_nodelet">
+  <class name="depth_image_averaging/depth_image_averaging_nodelet" type="depth_image_averaging::DepthImageAveragingNodelet" base_class_type="nodelet::Nodelet">
+  <description>
+  Depth Image Averaging Nodelet
+  </description>
+  </class>
+</library>

@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<launch>
+
+  <param name="use_sim_time" value="true"/>
+  
+  <node pkg="rosbag" type="play" name="rosbag_player" args="/otherssd/bag/armbag_2020-09-11-13-48-07_AUTO_SAMPLING.bag --clock"/>
+
+  <node pkg="rviz" type="rviz" name="$(anon rviz)" args="-d $(find depth_image_averaging)/rviz.rviz"/>
+
+  <node name="depth_image_averaging" pkg="depth_image_averaging" type="depth_image_averaging_node" output="screen">
+      <remap from="camera/depth/image_raw" to="/camera/aligned_depth_to_color/image_raw"/>
+      <remap from="camera/averaged_depth/image_raw" to="/camera/averaged_aligned_depth_to_color/image_raw"/>
+      <remap from="camera/depth/camera_info" to="/camera/aligned_depth_to_color/camera_info"/>
+      <remap from="camera/averaged_depth/camera_info" to="/camera/averaged_aligned_depth_to_color/camera_info"/>
+      <param name="averaging_method" value="2"/>
+      <param name="cl_kernel_path" value="$(find depth_image_averaging)/src/cl/computeMAD.cl"/>
+  </node>
+
+  <!-- Experiment with VoxBlox 
+
+  <node pkg="nodelet" type="nodelet" name="cloudify_full" output="screen" args="standalone depth_image_proc/point_cloud_xyzrgb">
+    <param name="queue_size" value="1000"/>
+    <param name="exact_sync" value="true"/>
+    <remap from="depth_registered/image_rect" to="/camera/averaged_aligned_depth_to_color/image_raw"/>
+    <remap from="depth_registered/points" to="/camera/averaged_aligned_depth_to_color/points"/>
+    <remap from="rgb/image_rect_color" to="/camera/color/image_raw"/>
+    <remap from="rgb/camera_info" to="/camera/color/camera_info"/>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="statistical_filter" output="screen" args="standalone pcl/StatisticalOutlierRemoval">
+    <remap from="~input" to="/camera/averaged_aligned_depth_to_color/points"/>
+    <remap from="~output" to="/camera/averaged_aligned_depth_to_color/points_filtered"/>
+    <param name="mean_k" value="13"/>
+    <param name="stddev" value="0.2"/>
+    <param name="negative" value="false"/>
+  </node>
+
+  <node pkg="voxblox_ros" type="tsdf_server" name="voxblox_node" output="screen" args="-alsologtostderr" clear_params="true">
+    <remap from="pointcloud" to="/camera/averaged_aligned_depth_to_color/points_filtered"/>
+    <param name="tsdf_voxel_size" value="0.001" />
+    <param name="tsdf_voxels_per_side" value="64" />
+    <param name="voxel_carving_enabled" value="true" />
+    <param name="color_mode" value="color" />
+    <param name="use_tf_transforms" value="true" />
+    <param name="update_mesh_every_n_sec" value="5.0" />
+    <param name="min_time_between_msgs_sec" value="0.0" />
+    <param name="method" value="simple" />
+    <param name="use_const_weight" value="false" />
+    <param name="allow_clear" value="true" />
+    <param name="verbose" value="false" />
+    <param name="enable_icp" value="false"/>
+    <param name="icp_mini_batch_size" value="1000"/>
+    <param name="accumulate_icp_corrections" value="true"/>
+    <param name="publish_tsdf_info" value="true"/>
+  </node>
+
+  -->
+
+</launch>
