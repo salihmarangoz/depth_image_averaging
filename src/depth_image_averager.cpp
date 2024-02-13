@@ -417,7 +417,7 @@ int DepthImageAverager::computeOpenCL(sensor_msgs::ImagePtr &averaged_image, con
   if (ret != 0) return ret;
 
   ret = clSetKernelArg(opencl_kernel_, 2, sizeof(cl_int), &size_);
-  if (ret != 0) return NULL;
+  if (ret != 0) return ret;
 
   // set the input
   ret = clEnqueueWriteBuffer(command_queue_, input_buffer_, CL_TRUE, 0, sizeof(float) * width_*height_*max_elements_, arr_.data(), 0, NULL, NULL);
