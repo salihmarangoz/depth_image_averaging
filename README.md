@@ -103,7 +103,7 @@ This package is tested on Ubuntu 20.04 and ROS Noetic. Other requirements are co
 **`averaging_method`** (int, default: 2)
 		Selects the averaging method. `MEAN=0` computes the mean value, `MEDIAN=1` computes the median value, `MAD=2` filters outliers using MAD and computes the mean value using the remaining data, and lastly `OPENCL=-1` forwards the computing to the provided OpenCL kernel. In this case, do not forget to set `USE_OPENCL` to 1 in the CMakeLists.txt !
 
-**`cl_kernel_path`** (double, default: "")
+**`cl_kernel_path`** (string, default: "")
 		OpenCL kernel file. Kernel files are located in `src/cl/`. If `averaging_method=-1` then the selected kernel file is executed for filtering. This feature is experimental and passing some parameters is not supported yet.
 
 **`true_median`** (bool, default: true)
