@@ -1,36 +1,35 @@
-/* 
- * This file is part of the depth_image_averaging (https://github.com/salihmarangoz/depth_image_averaging).
+/*
+ * This file is part of the depth_image_averaging
+ * (https://github.com/salihmarangoz/depth_image_averaging).
  * Copyright (c) 2024 Salih Marangoz
- * 
- * This program is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU General Public License as published by  
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3.
  *
- * This program is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License 
+ * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "depth_image_averaging/depth_image_averaging_nodelet.h"
-#include "pluginlib/class_list_macros.h"
-#include <sensor_msgs/image_encodings.h>
+
 #include <depth_image_proc/depth_traits.h>
+#include <sensor_msgs/image_encodings.h>
+
 #include <chrono>
 
-namespace depth_image_averaging
-{
+#include "pluginlib/class_list_macros.h"
 
-DepthImageAveragingNodelet::DepthImageAveragingNodelet()
-{
+namespace depth_image_averaging {
 
-}
+DepthImageAveragingNodelet::DepthImageAveragingNodelet() {}
 
-void DepthImageAveragingNodelet::onInit()
-{
+void DepthImageAveragingNodelet::onInit() {
   nh_ = getNodeHandle();
   private_nh_ = getPrivateNodeHandle();
 
@@ -54,45 +53,48 @@ void DepthImageAveragingNodelet::onInit()
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>();
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-  if (use_image_transport_)
-  {
+  if (use_image_transport_) {
     it_ = std::make_shared<image_transport::ImageTransport>(nh_);
     camera_pub_ = it_->advertiseCamera("camera/averaged_depth/image_raw", 20);
-    camera_sub_ = it_->subscribeCamera("camera/depth/image_raw", 150, boost::bind(&DepthImageAveragingNodelet::cameraCallback, this, _1, _2));
+    camera_sub_ = it_->subscribeCamera(
+        "camera/depth/image_raw", 150,
+        boost::bind(&DepthImageAveragingNodelet::cameraCallback, this, _1, _2));
+  } else {
+    depth_image_pub_ = nh_.advertise<sensor_msgs::Image>(
+        "camera/averaged_depth/image_raw", 20);
+    depth_image_sub_ =
+        nh_.subscribe("camera/depth/image_raw", 150,
+                      &DepthImageAveragingNodelet::depthImageCallback, this);
   }
-  else
-  {
-    depth_image_pub_ = nh_.advertise<sensor_msgs::Image>("camera/averaged_depth/image_raw", 20);
-    depth_image_sub_ = nh_.subscribe("camera/depth/image_raw", 150, &DepthImageAveragingNodelet::depthImageCallback, this);
-  }
-
 };
 
-void DepthImageAveragingNodelet::cameraCallback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& camera_info)
-{
+void DepthImageAveragingNodelet::cameraCallback(
+    const sensor_msgs::ImageConstPtr &image,
+    const sensor_msgs::CameraInfoConstPtr &camera_info) {
   last_camera_info_ = camera_info;
   depthImageCallback(image);
 }
 
-void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageConstPtr &image)
-{
+void DepthImageAveragingNodelet::depthImageCallback(
+    const sensor_msgs::ImageConstPtr &image) {
   NODELET_INFO_ONCE("DepthImageAveragingNodelet: First image received!");
 
-  if (depth_image_averager_ == nullptr)
-  {
-    depth_image_averager_ = std::make_shared<DepthImageAverager>(image->width, image->height, min_elements_, max_elements_);
+  if (depth_image_averager_ == nullptr) {
+    depth_image_averager_ = std::make_shared<DepthImageAverager>(
+        image->width, image->height, min_elements_, max_elements_);
   }
 
-  try
-  {
-    geometry_msgs::TransformStamped current_transform = tf_buffer_->lookupTransform(reference_frame_, image->header.frame_id, image->header.stamp, ros::Duration(10.0));
+  try {
+    geometry_msgs::TransformStamped current_transform =
+        tf_buffer_->lookupTransform(reference_frame_, image->header.frame_id,
+                                    image->header.stamp, ros::Duration(10.0));
     bool is_moved = checkMovement(current_transform, last_stable_transform_);
 
-    // If in front margin, drop the message and update transform if movement detected
-    if ((current_transform.header.stamp - last_stable_transform_.header.stamp).toSec() < window_left_margin_)
-    {
-      if (is_moved)
-      {
+    // If in front margin, drop the message and update transform if movement
+    // detected
+    if ((current_transform.header.stamp - last_stable_transform_.header.stamp)
+            .toSec() < window_left_margin_) {
+      if (is_moved) {
         // reset
         depth_image_averager_->reset();
         image_buffer_.clear();
@@ -102,10 +104,9 @@ void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageCons
     }
 
     // If movement detected, publish the accumulated data and reset
-    if (is_moved)
-    {
-      if (depth_image_averager_->size() >= min_elements_ && (depth_image_averager_->size() >= max_elements_ || !drop_last_) )
-      {
+    if (is_moved) {
+      if (depth_image_averager_->size() >= min_elements_ &&
+          (depth_image_averager_->size() >= max_elements_ || !drop_last_)) {
         publishAcc();
       }
 
@@ -115,112 +116,116 @@ void DepthImageAveragingNodelet::depthImageCallback(const sensor_msgs::ImageCons
       last_stable_transform_ = current_transform;
     }
 
-    // Add the image to the buffer, we will decide to process or wait in the buffer later
+    // Add the image to the buffer, we will decide to process or wait in the
+    // buffer later
     image_buffer_.push_back(image);
 
     // Process the buffer
-    while (image_buffer_.size() > 0 && (image->header.stamp - image_buffer_.front()->header.stamp).toSec() > window_right_margin_)
-    {
+    while (image_buffer_.size() > 0 &&
+           (image->header.stamp - image_buffer_.front()->header.stamp).toSec() >
+               window_right_margin_) {
       depth_image_averager_->add(image_buffer_.front());
       image_buffer_.pop_front();
     }
 
     // Is the batch complete?
-    if (depth_image_averager_->size() >= max_elements_)
-    {
+    if (depth_image_averager_->size() >= max_elements_) {
       publishAcc();
       // soft-reset
       depth_image_averager_->reset();
     }
-
-  }
-  catch (tf2::TransformException &ex)
-  {
+  } catch (tf2::TransformException &ex) {
     NODELET_WARN("%s", ex.what());
   }
 }
 
-bool DepthImageAveragingNodelet::checkMovement(const geometry_msgs::TransformStamped& transform_a, const geometry_msgs::TransformStamped& transform_b)
-{
+bool DepthImageAveragingNodelet::checkMovement(
+    const geometry_msgs::TransformStamped &transform_a,
+    const geometry_msgs::TransformStamped &transform_b) {
   // Check displacement
-  double distance_squared =   pow(transform_a.transform.translation.x - transform_b.transform.translation.x, 2) +
-                              pow(transform_a.transform.translation.y - transform_b.transform.translation.y, 2) + 
-                              pow(transform_a.transform.translation.z - transform_b.transform.translation.z, 2);
-  if (distance_squared > pow(max_displacement_, 2))
-  {
+  double distance_squared = pow(transform_a.transform.translation.x -
+                                    transform_b.transform.translation.x,
+                                2) +
+                            pow(transform_a.transform.translation.y -
+                                    transform_b.transform.translation.y,
+                                2) +
+                            pow(transform_a.transform.translation.z -
+                                    transform_b.transform.translation.z,
+                                2);
+  if (distance_squared > pow(max_displacement_, 2)) {
     return true;
   }
 
   // Check rotation
-  double dot_prod = transform_a.transform.rotation.w * transform_b.transform.rotation.w +
-                    transform_a.transform.rotation.x * transform_b.transform.rotation.x +
-                    transform_a.transform.rotation.y * transform_b.transform.rotation.y +
-                    transform_a.transform.rotation.z * transform_b.transform.rotation.z;
-  double rotation_distance = std::acos(2*dot_prod*dot_prod-1);
+  double dot_prod =
+      transform_a.transform.rotation.w * transform_b.transform.rotation.w +
+      transform_a.transform.rotation.x * transform_b.transform.rotation.x +
+      transform_a.transform.rotation.y * transform_b.transform.rotation.y +
+      transform_a.transform.rotation.z * transform_b.transform.rotation.z;
+  double rotation_distance = std::acos(2 * dot_prod * dot_prod - 1);
 
-  if (rotation_distance > max_rotation_)
-  {
+  if (rotation_distance > max_rotation_) {
     return true;
   }
 
   return false;
 }
 
-void DepthImageAveragingNodelet::publishAcc()
-{
+void DepthImageAveragingNodelet::publishAcc() {
   if (depth_image_averager_->size() <= 0) return;
 
   sensor_msgs::ImagePtr acc_image = boost::make_shared<sensor_msgs::Image>();
 
   auto start = std::chrono::high_resolution_clock::now();
   int ret;
-  switch (averaging_method_)
-  {
-    case 0: // MEAN
+  switch (averaging_method_) {
+    case 0:  // MEAN
       ret = depth_image_averager_->computeMean(acc_image);
       break;
-    case 1: // MEDIAN
+    case 1:  // MEDIAN
       ret = depth_image_averager_->computeMedian(acc_image, true_median_);
       break;
-    case 2: // MAD
-      ret = depth_image_averager_->computeMAD(acc_image, mad_upper_limit_a_, mad_upper_limit_b_, mad_scale_, true_median_);
+    case 2:  // MAD
+      ret = depth_image_averager_->computeMAD(acc_image, mad_upper_limit_a_,
+                                              mad_upper_limit_b_, mad_scale_,
+                                              true_median_);
       break;
 #if USE_OPENCL
-    case -1: // OPENCL
+    case -1:  // OPENCL
       ret = depth_image_averager_->computeOpenCL(acc_image, cl_kernel_path_);
       break;
 #else
-    case -1: // OPENCL
-      NODELET_ERROR("Compile depth image aveger with OpenCL enabled! See USE_OPENCL in CMakeLists.txt");
+    case -1:  // OPENCL
+      NODELET_ERROR(
+          "Compile depth image aveger with OpenCL enabled! See USE_OPENCL in "
+          "CMakeLists.txt");
       exit(1);
 #endif
     default:
-      NODELET_ERROR("Unknown depth averaging method index: %d", averaging_method_);
+      NODELET_ERROR("Unknown depth averaging method index: %d",
+                    averaging_method_);
       exit(-1);
   }
   auto stop = std::chrono::high_resolution_clock::now();
   std::chrono::duration<float> timediff = stop - start;
   NODELET_INFO("Depth image averaging took %f seconds.", timediff.count());
 
-  if (ret != 0)
-  {
+  if (ret != 0) {
     NODELET_ERROR("Avaraging failed! Return value: %d", ret);
     return;
   }
 
-  if (use_image_transport_)
-  {
-    boost::shared_ptr<sensor_msgs::CameraInfo> camera_info = boost::make_shared<sensor_msgs::CameraInfo>(*last_camera_info_);
+  if (use_image_transport_) {
+    boost::shared_ptr<sensor_msgs::CameraInfo> camera_info =
+        boost::make_shared<sensor_msgs::CameraInfo>(*last_camera_info_);
     camera_info->header = acc_image->header;
     camera_pub_.publish(acc_image, camera_info);
-  }
-  else
-  {
+  } else {
     depth_image_pub_.publish(acc_image);
   }
-  
 }
 
 }  // namespace depth_image_averaging
 
-PLUGINLIB_EXPORT_CLASS(depth_image_averaging::DepthImageAveragingNodelet, nodelet::Nodelet);
+PLUGINLIB_EXPORT_CLASS(depth_image_averaging::DepthImageAveragingNodelet,
+                       nodelet::Nodelet);
